@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Conspiracy Files</title>
+<style>
+:root{--g:#5dff9a;--dim:#2a7d4b;--bg:#04100a;--panel:#082015;--amber:#ffb347}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--g);font:16px/1.55 "Courier New",monospace;
+  background-image:repeating-linear-gradient(0deg,rgba(0,0,0,.25) 0 1px,transparent 1px 3px)}
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px 14px;border-bottom:2px solid var(--dim)}
+h1{margin:0 auto 0 0;font-size:1.15rem;letter-spacing:.04em;text-shadow:0 0 10px var(--g)}
+nav{display:flex;flex-wrap:wrap;gap:6px}
+button{font:inherit;color:var(--g);background:var(--panel);border:1px solid var(--dim);padding:6px 12px;cursor:pointer}
+button:hover,button.on{background:var(--g);color:var(--bg)}
+button:focus-visible,a:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+main{max-width:980px;margin:0 auto;padding:14px}
+section{display:none}section.on{display:block}
+a{color:var(--amber)}
+.card{border:1px solid var(--dim);background:var(--panel);padding:12px 16px;margin:0 0 12px}
+.card h3{margin:0 0 4px;color:var(--amber)}
+.tag{font-size:.8rem;color:var(--bg);background:var(--g);padding:1px 6px}
+.tag.d{background:var(--amber)}
+#globe{width:100%;max-height:70vh;display:block;cursor:grab;touch-action:none}
+#room{width:100%;display:block;image-rendering:pixelated;border:2px solid var(--dim);background:#000;touch-action:manipulation}
+#roomview{display:none}
+#panel{border:2px solid var(--amber);background:var(--panel);padding:12px 16px;margin-top:10px;min-height:90px}
+#panel h3{margin:0 0 4px;color:var(--amber)}
+#alien{position:fixed;right:12px;bottom:12px;z-index:9;display:flex;flex-direction:column;align-items:flex-end;gap:6px;max-width:260px}
+#bubble{background:var(--panel);border:2px solid var(--g);padding:8px 10px;font-size:.9rem}
+#alien button.al{font-size:2.2rem;line-height:1;padding:2px 8px;border-radius:50%}
+.book{min-height:150px}
+.hint{color:var(--dim)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <h1>THE CONSPIRACY FILES</h1>
+  <nav id="nav"></nav>
+</header>
+<main>
+  <section id="globeS" class="on">
+    <p class="hint">Drag the globe to spin it. Click a glowing dot to fly in.</p>
+    <svg id="globe" role="img" aria-label="Interactive globe with case markers"></svg>
+    <div id="roomview">
+      <button id="back">&larr; Back to globe</button>
+      <h2 id="roomTitle"></h2>
+      <canvas id="room" width="560" height="360" aria-label="Explorable room"></canvas>
+      <p class="hint">Move: arrow keys / WASD, or tap a floor tile. Open things: tap them, or stand close and press E.</p>
+      <div id="panel"></div>
+    </div>
+  </section>
+  <section id="blogS"><h2>Late news &amp; thoughts</h2><div id="posts"></div><h3>Join the chat</h3><div id="comments"></div></section>
+  <section id="archiveS"><h2>Archive</h2><p class="hint">Drop PDFs in the <b>archive/</b> folder, then add a line to the FILES list in index.html.</p><div id="files"></div></section>
+  <section id="libraryS"><h2>Library</h2><div id="shelf"></div><div id="reader" class="card book" hidden></div></section>
+  <section id="labS"><h2>Lab</h2>
+    <div class="card"><h3>Claim checker</h3><p>Tick every box that is true about the claim you are checking.</p><div id="checks"></div><p id="score"></p></div>
+    <div class="card"><h3>More experiments go here</h3><p>This section is your sandbox. Add new tools as new cards.</p></div>
+  </section>
+</main>
+<div id="alien"><div id="bubble"></div><button class="al" id="zorp" aria-label="Ask Zorp for help">&#128125;</button></div>
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script>
+/* ============ 1. YOUR CONTENT: edit these lists to add stuff ============ */
+
+// Each case = a dot on the globe + a room you can walk around in.
+// status: "documented" (government papers confirm it) or "disputed" (official story vs. claims)
+const CASES=[
+{id:"area51",name:"Area 51",lat:37.24,lon:-115.81,status:"documented",
+ floor:["#2b2417","#352c1c"],wall:"#7a6a3a",
+ intro:"Nevada desert. The base the government denied for decades.",
+ objects:[
+ {x:3,y:2,e:"📄",t:"Declassified CIA history",d:"In 2013 the CIA released a history of the U-2 and OXCART spy-plane programs that openly names Area 51 as the test site. Before that, the government would not confirm the base existed."},
+ {x:10,y:2,e:"🖥️",t:"Test flight computer",d:"Why the secrecy? Experimental spy planes were flown here in the 1950s and 60s. Strange lights in the sky were often these aircraft, which helped fuel UFO reports."},
+ {x:6,y:6,e:"🛸",t:"The alien question",d:"No official document confirms extraterrestrial craft at Area 51. The belief grew from secrecy plus real, strange aircraft. Believers say the secrecy itself is the proof."},
+ {x:11,y:6,e:"🚧",t:"Restricted area sign",d:"The sign warns that deadly force is authorized for trespassers. Real sign, real rule, and a big reason the legend stuck."}]},
+{id:"mkultra",name:"MKUltra",lat:38.95,lon:-77.15,status:"documented",
+ floor:["#1b2230","#222b3b"],wall:"#5a6f99",
+ intro:"CIA headquarters, Virginia. A real mind-control program.",
+ objects:[
+ {x:3,y:2,e:"🗄️",t:"The surviving files",d:"MKUltra ran from 1953 to the early 1970s. CIA director Richard Helms ordered most records destroyed in 1973. About 20,000 pages survived in a financial archive and surfaced in 1977."},
+ {x:10,y:2,e:"💊",t:"LSD experiments",d:"The CIA tested LSD and other drugs on people, sometimes without their knowledge. It was investigated in 1975 by the Church Committee in the U.S. Senate."},
+ {x:6,y:6,e:"📚",t:"Senate hearings",d:"Hearings in 1975 and 1977 confirmed the program. The government later admitted it. This is one of the best-documented real conspiracies."},
+ {x:11,y:6,e:"🕯️",t:"What we still don't know",d:"Because records were destroyed, the full scale is unknown. Many deeper claims about it are unproven."}]},
+{id:"northwoods",name:"Operation Northwoods",lat:38.87,lon:-77.06,status:"documented",
+ floor:["#2a1c1c","#331f1f"],wall:"#995a5a",
+ intro:"The Pentagon, 1962. A plan to stage attacks and blame Cuba.",
+ objects:[
+ {x:3,y:2,e:"📑",t:"The memo",d:"In 1962 the Joint Chiefs of Staff proposed staging fake incidents, including blaming Cuba for attacks, to justify action against Cuba."},
+ {x:10,y:2,e:"🙅",t:"Kennedy said no",d:"President Kennedy rejected the plan. It was never carried out."},
+ {x:6,y:6,e:"🔓",t:"Declassified",d:"The documents were released in 1997 by the JFK Assassination Records Review Board. Real papers, public today."},
+ {x:11,y:6,e:"❓",t:"Why it matters",d:"It shows leaders at the highest level once seriously proposed a false-flag idea. It does not prove any other event was staged."}]},
+{id:"tonkin",name:"Gulf of Tonkin",lat:19.5,lon:107.5,status:"documented",
+ floor:["#14262a","#193036"],wall:"#4f8f99",
+ intro:"Vietnam, August 1964. The incident that widened a war.",
+ objects:[
+ {x:3,y:2,e:"🚢",t:"The reported attack",d:"On Aug 2, 1964 U.S. ships clashed with North Vietnamese boats. On Aug 4 a second attack was reported."},
+ {x:10,y:2,e:"📡",t:"The second attack didn't happen",d:"A later NSA internal study, declassified in 2005, found the Aug 4 attack did not occur. Reports had been misread."},
+ {x:6,y:6,e:"📜",t:"The resolution",d:"Congress passed the Gulf of Tonkin Resolution, which gave the president broad power to escalate in Vietnam."},
+ {x:11,y:6,e:"⚖️",t:"Mistake or lie?",d:"Historians still debate whether officials were mistaken or shaded the facts. The documents support that the public account was wrong."}]},
+{id:"roswell",name:"Roswell",lat:33.39,lon:-104.52,status:"disputed",
+ floor:["#2e2a1a","#38331f"],wall:"#8f8545",
+ intro:"New Mexico, 1947. Something crashed. What was it?",
+ objects:[
+ {x:3,y:2,e:"📰",t:"The headline",d:"In July 1947 the Army air field announced it had recovered a 'flying disc'. The next day the story changed to a weather balloon."},
+ {x:10,y:2,e:"🎈",t:"Project Mogul",d:"A 1994 Air Force report concluded the debris was from Project Mogul, a secret program using balloons to detect Soviet nuclear tests."},
+ {x:6,y:6,e:"🧪",t:"The 'bodies'",d:"A 1997 Air Force report said reported 'alien bodies' matched crash-test dummies and later events, not 1947."},
+ {x:11,y:6,e:"🔍",t:"Why people still doubt",d:"The cover story changed fast, and Project Mogul itself was secret. Skeptics and believers both point to that gap."}]},
+{id:"tuskegee",name:"Tuskegee Study",lat:32.43,lon:-85.71,status:"documented",
+ floor:["#232a1c","#2b3322"],wall:"#7e9a5a",
+ intro:"Alabama, 1932 to 1972. A real study that harmed real people.",
+ objects:[
+ {x:3,y:2,e:"🩺",t:"What happened",d:"The U.S. Public Health Service studied untreated syphilis in hundreds of Black men and did not tell them the truth about their condition."},
+ {x:10,y:2,e:"💉",t:"Treatment withheld",d:"Even after penicillin became the standard cure in the 1940s, the men were not offered it."},
+ {x:6,y:6,e:"📢",t:"The whistleblower",d:"Peter Buxtun reported concerns, and the story broke in the press in 1972. The study was shut down."},
+ {x:11,y:6,e:"🏛️",t:"The apology",d:"In 1997 President Clinton formally apologized. It is a major reason some communities distrust medical authorities."}]}
+];
+
+const POSTS=[
+ {date:"2026-10-20",title:"Welcome to the files",text:"This site mixes cases the government has admitted with cases that are still disputed. Every case is labeled so you always know which is which."}
+];
+const FILES=[ /* {title:"Example CIA file", path:"archive/example.pdf"} */ ];
+const BOOKS=[
+ {title:"How to read a declassified document",pages:["Page 1: Look at the date. Old files can be outdated.","Page 2: Black boxes are redactions. Something was hidden.","Page 3: Check who wrote it. A memo is an opinion, not proof.","The end. Add more pages in the BOOKS list."]}
+];
+const CHECKS=["It names a specific date and place","A primary source exists (document, record, video)","More than one independent source agrees","The claim could be proven wrong if false","It does not depend on 'they destroyed all the evidence'"];
+
+// Optional chat: after setting up Giscus (see README), paste the values here.
+const GISCUS=null; // e.g. {repo:"you/conspiracy-files",repoId:"...",category:"General",categoryId:"..."}
+
+/* ============ 2. Tabs ============ */
+const TABS=[["globeS","Globe"],["blogS","Blog & Chat"],["archiveS","Archive"],["libraryS","Library"],["labS","Lab"]];
+const nav=document.getElementById("nav");
+TABS.forEach(([id,label],i)=>{const b=document.createElement("button");b.textContent=label;if(!i)b.className="on";
+ b.onclick=()=>{TABS.forEach(([s])=>document.getElementById(s).classList.toggle("on",s===id));
+  [...nav.children].forEach(x=>x.className=x===b?"on":"");tip(id);};nav.appendChild(b);});
+
+/* ============ 3. Zorp the alien mascot ============ */
+const TIPS={globeS:"Greetings, human! Drag the globe, then click a glowing dot.",blogS:"News and thoughts live here. Join the chat below.",
+ archiveS:"Secret files! Add PDFs here and I will guard them.",libraryS:"Books you can flip through. Pick one.",labS:"Experiments. Try the claim checker.",room:"Walk around. Anything with an emoji can be opened."};
+const bubble=document.getElementById("bubble");
+function tip(k){bubble.textContent=TIPS[k]||TIPS.globeS;}
+document.getElementById("zorp").onclick=()=>{const k=Object.keys(TIPS);bubble.textContent=TIPS[k[Math.floor(Math.random()*k.length)]];};
+tip("globeS");
+
+/* ============ 4. Globe ============ */
+const W=700,H=460,svg=d3.select("#globe").attr("viewBox",`0 0 ${W} ${H}`);
+const proj=d3.geoOrthographic().scale(200).translate([W/2,H/2]).rotate([100,-25]);
+const path=d3.geoPath(proj),grat=d3.geoGraticule10();let land=null,flying=false;
+function draw(){
+ svg.selectAll("*").remove();
+ svg.append("circle").attr("cx",W/2).attr("cy",H/2).attr("r",proj.scale()).attr("fill","#031a0f").attr("stroke","#5dff9a");
+ svg.append("path").datum(grat).attr("d",path).attr("fill","none").attr("stroke","#14502d").attr("stroke-width",.5);
+ if(land)svg.append("path").datum(land).attr("d",path).attr("fill","#0d3a22").attr("stroke","#2a7d4b").attr("stroke-width",.5);
+ const c=proj.invert([W/2,H/2]);
+ CASES.forEach(k=>{if(d3.geoDistance([k.lon,k.lat],c)>Math.PI/2)return;const p=proj([k.lon,k.lat]);
+  const g=svg.append("g").style("cursor","pointer").on("click",()=>fly(k));
+  g.append("circle").attr("cx",p[0]).attr("cy",p[1]).attr("r",16).attr("fill","transparent");
+  g.append("circle").attr("cx",p[0]).attr("cy",p[1]).attr("r",6).attr("fill",k.status==="documented"?"#5dff9a":"#ffb347");
+  g.append("text").attr("x",p[0]+10).attr("y",p[1]+4).attr("fill","#e6ffef").attr("font-size",12).text(k.name);});
+}
+d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json").then(w=>{land=topojson.feature(w,w.objects.land);draw();}).catch(draw);
+draw();
+svg.call(d3.drag().on("drag",e=>{if(flying)return;const r=proj.rotate(),s=.3;proj.rotate([r[0]+e.dx*s,Math.max(-80,Math.min(80,r[1]-e.dy*s))]);draw();}));
+function fly(k){
+ if(flying)return;flying=true;const ir=d3.interpolate(proj.rotate(),[-k.lon,-k.lat]),is=d3.interpolate(200,2400);
+ d3.transition().duration(1800).ease(d3.easeCubicInOut).tween("f",()=>t=>{proj.rotate(ir(t)).scale(is(t));draw();})
+  .on("end",()=>{proj.scale(200);draw();flying=false;openRoom(k);});
+}
+
+/* ============ 5. Retro room engine ============ */
+const cv=document.getElementById("room"),ctx=cv.getContext("2d"),T=40,COLS=14,ROWS=9;
+let cur=null,me={x:1,y:4};
+function openRoom(k){cur=k;me={x:1,y:4};document.getElementById("globe").style.display="none";
+ document.querySelector("#globeS .hint").style.display="none";document.getElementById("roomview").style.display="block";
+ document.getElementById("roomTitle").innerHTML=k.name+' <span class="tag'+(k.status==="documented"?'':' d')+'">'+k.status+'</span>';
+ document.getElementById("panel").innerHTML="<h3>Welcome</h3><p>"+k.intro+"</p>";tip("room");paint();}
+document.getElementById("back").onclick=()=>{cur=null;document.getElementById("roomview").style.display="none";
+ document.getElementById("globe").style.display="block";document.querySelector("#globeS .hint").style.display="block";tip("globeS");};
+function near(){return cur&&cur.objects.find(o=>Math.abs(o.x-me.x)<=1&&Math.abs(o.y-me.y)<=1);}
+function show(o){document.getElementById("panel").innerHTML="<h3>"+o.e+" "+o.t+"</h3><p>"+o.d+"</p>";}
+function paint(){if(!cur)return;
+ for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){const wall=x===0||y===0||x===COLS-1||y===ROWS-1;
+  ctx.fillStyle=wall?cur.wall:cur.floor[(x+y)%2];ctx.fillRect(x*T,y*T,T,T);}
+ ctx.font="28px serif";ctx.textAlign="center";ctx.textBaseline="middle";
+ const n=near();
+ cur.objects.forEach(o=>{if(o===n){ctx.strokeStyle="#ffb347";ctx.lineWidth=3;ctx.strokeRect(o.x*T+2,o.y*T+2,T-4,T-4);}ctx.fillText(o.e,o.x*T+T/2,o.y*T+T/2+2);});
+ ctx.fillText("🕵️",me.x*T+T/2,me.y*T+T/2+2);}
+function step(dx,dy){const nx=me.x+dx,ny=me.y+dy;
+ if(nx<1||ny<1||nx>COLS-2||ny>ROWS-2||cur.objects.some(o=>o.x===nx&&o.y===ny))return;me.x=nx;me.y=ny;paint();}
+addEventListener("keydown",e=>{if(!cur)return;const k=e.key.toLowerCase();
+ const m={arrowup:[0,-1],w:[0,-1],arrowdown:[0,1],s:[0,1],arrowleft:[-1,0],a:[-1,0],arrowright:[1,0],d:[1,0]}[k];
+ if(m){e.preventDefault();step(...m);}else if(k==="e"||k===" "){const n=near();if(n){e.preventDefault();show(n);}}});
+cv.addEventListener("click",e=>{if(!cur)return;const r=cv.getBoundingClientRect(),
+ x=Math.floor((e.clientX-r.left)/r.width*COLS),y=Math.floor((e.clientY-r.top)/r.height*ROWS);
+ const o=cur.objects.find(o=>o.x===x&&o.y===y);
+ if(o){show(o);}else if(x>0&&y>0&&x<COLS-1&&y<ROWS-1){me={x,y};paint();}});
+
+/* ============ 6. Blog, comments, archive, library, lab ============ */
+document.getElementById("posts").innerHTML=POSTS.map(p=>`<div class="card"><h3>${p.title}</h3><small>${p.date}</small><p>${p.text}</p></div>`).join("");
+const cm=document.getElementById("comments");
+if(GISCUS){const s=document.createElement("script");s.src="https://giscus.app/client.js";
+ Object.entries({"data-repo":GISCUS.repo,"data-repo-id":GISCUS.repoId,"data-category":GISCUS.category,"data-category-id":GISCUS.categoryId,
+ "data-mapping":"pathname","data-theme":"dark","data-reactions-enabled":"1"}).forEach(([k,v])=>s.setAttribute(k,v));
+ s.crossOrigin="anonymous";s.async=true;cm.appendChild(s);}
+else cm.innerHTML='<div class="card">Chat is not switched on yet. Follow the "Turn on the chat" step in the README, then fill in GISCUS in index.html.</div>';
+document.getElementById("files").innerHTML=FILES.length?FILES.map(f=>`<div class="card"><a href="${f.path}" target="_blank" rel="noopener">${f.title}</a></div>`).join(""):'<div class="card">No files yet. Your first PDF goes here.</div>';
+const shelf=document.getElementById("shelf"),rd=document.getElementById("reader");
+BOOKS.forEach(b=>{const x=document.createElement("button");x.textContent="📖 "+b.title;x.onclick=()=>{let i=0;rd.hidden=false;
+ const render=()=>{rd.innerHTML=`<h3>${b.title}</h3><p>${b.pages[i]}</p><button id="pv">&larr;</button> <button id="nx">&rarr;</button> <small>${i+1}/${b.pages.length}</small>`;
+  document.getElementById("pv").onclick=()=>{i=Math.max(0,i-1);render();};document.getElementById("nx").onclick=()=>{i=Math.min(b.pages.length-1,i+1);render();};};render();};shelf.appendChild(x);});
+const ck=document.getElementById("checks");
+ck.innerHTML=CHECKS.map((c,i)=>`<label><input type="checkbox" data-i="${i}"> ${c}</label><br>`).join("");
+ck.onchange=()=>{const n=ck.querySelectorAll("input:checked").length;
+ document.getElementById("score").textContent=`Score: ${n} of ${CHECKS.length}. `+(n>=4?"Looks well supported.":n>=2?"Mixed. Keep digging.":"Weak. Treat with caution.");};
+</script>
+</body>
+</html>
