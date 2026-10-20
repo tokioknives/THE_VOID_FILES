@@ -218,5 +218,6 @@ ck.innerHTML=CHECKS.map((c,i)=>`<label><input type="checkbox" data-i="${i}"> ${c
 ck.onchange=()=>{const n=ck.querySelectorAll("input:checked").length;
  document.getElementById("score").textContent=`Score: ${n} of ${CHECKS.length}. `+(n>=4?"Looks well supported.":n>=2?"Mixed. Keep digging.":"Weak. Treat with caution.");};
 </script>
+<script src="extra.js"></script>
 </body>
 </html>
